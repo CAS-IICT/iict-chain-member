@@ -1,0 +1,144 @@
+version: '3.6'
+
+x-besu-tx-def:
+  &besu-tx-def
+  restart: "on-failure"
+  image: hyperledger/besu:${BESU_VERSION:-latest}
+  entrypoint:
+    - /bin/bash
+    - -c
+    - |
+
+      if [ ! -f "/opt/besu/keys/nodekey" ];then
+        /opt/besu/bin/besu operator generate-blockchain-config \
+        --config-file=/config/node-config.json \
+        --to=/opt/besu/keys/temp \
+        --private-key-file-name=nodekey \
+        --public-key-file-name=nodekey.pub
+        mv /opt/besu/keys/temp/keys/*/* /opt/besu/keys/
+        ls /opt/besu/keys/temp/keys/ > /opt/besu/keys/address
+        rm -rf /opt/besu/keys/temp
+      fi
+
+      /opt/besu/bin/besu \
+      --config-file=/config/config.toml \
+      --p2p-host=$$(hostname -i) \
+      --genesis-file=/config/genesis.json \
+      --node-private-key-file=/opt/besu/keys/nodekey \
+      --min-gas-price=0 \
+      --privacy-enabled \
+      --privacy-url=http://member1tessera:9101 \
+      --privacy-public-key-file=/opt/besu/keys/tm.pub \
+      --privacy-onchain-groups-enabled=${PRIVACY_ONCHAIN_GROUPS_ENABLED:-false} \
+      --rpc-http-api=ADMIN,DEBUG,EEA,WEB3,ETH,NET,PRIV,PERM,${BESU_CONS_ALGO:-QBFT} \
+      --rpc-ws-api=ADMIN,DEBUG,EEA,WEB3,ETH,NET,PRIV,PERM,${BESU_CONS_ALGO:-QBFT} ;
+
+x-tessera-def:
+  &tessera-def
+  image: quorumengineering/tessera:${TESSERA_VERSION:-latest}
+  expose:
+    - 9000
+    - 9080
+    - 9101
+  restart: "no"
+  healthcheck:
+    test: ["CMD", "wget", "--spider", "--proxy", "off", "http://localhost:9000/upcheck"]
+    interval: 3s
+    timeout: 3s
+    retries: 20
+    start_period: 5s
+  entrypoint:
+    - /bin/sh
+    - -c
+    - |
+      mkdir -p /var/log/tessera/
+
+      if [ ! -f "/config/keys/tm.key" ];then
+        /tessera/bin/tessera -keygen -filename /config/keys/tm
+      fi
+
+      export DOMAIN=${DOMAIN}
+
+          cat <<EOF > /config/tessera/tessera-config-09.json
+          {
+            "mode": "orion",
+            "useWhiteList": false,
+            "jdbc": {
+              "username": "sa",
+              "password": "",
+              "url": "jdbc:h2:./data/tm/db;MODE=Oracle;TRACE_LEVEL_SYSTEM_OUT=0",
+              "autoCreateTables": true
+            },
+            "serverConfigs":[
+            {
+              "app":"ThirdParty",
+              "enabled": true,
+              "serverAddress": "$$(echo $DOMAIN):9080",
+              "communicationType" : "REST"
+            },
+            {
+              "app":"Q2T",
+              "enabled": true,
+              "serverAddress": "$$(echo $DOMAIN):9101",
+              "sslConfig": {
+                "tls": "OFF"
+              },
+              "communicationType" : "REST"
+            },
+            {
+              "app":"P2P",
+              "enabled": true,
+              "serverAddress": "$$(echo $DOMAIN):9000",
+              "sslConfig": {
+                "tls": "OFF"
+              },
+              "communicationType" : "REST"
+            }
+            ],
+            "peer": $$(cat /config/tessera/boot-member-config.json),
+            "keys": {
+              "passwords": [],
+              "keyData": [
+                {
+                  "config": $$(cat /config/keys/tm.key),
+                  "publicKey": "$$(cat /config/keys/tm.pub)"
+                }
+              ]
+            },
+            "alwaysSendTo": []
+          }
+      EOF
+          cat /config/tessera/tessera-config-09.json
+          /tessera/bin/tessera -configfile /config/tessera/tessera-config-09.json &> /var/log/tessera/tessera-$$HOSTNAME.log | tee -a /var/log/tessera/tessera-$$HOSTNAME.log
+
+services:
+
+  member1tessera:
+    << : *tessera-def
+    environment:
+      - TESSERA_CONFIG_TYPE="-09"
+      - JAVA_OPTS="-Dlogback.configurationFile=/config/logs/logback.xml"
+    volumes:
+      - ./config/tessera/:/config/tessera
+      - ./config/nodes/member:/config/keys
+      - ./logs/tessera:/var/log/tessera/
+    ports:
+      - 9080:9080
+      - 9000:9000
+      - 9101:9101
+
+  member1besu:
+    << : *besu-tx-def
+    environment:
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=member1besu,service.version=${BESU_VERSION:-latest}
+      - NODE_ID=6
+    volumes:
+      - ./config/besu/:/config
+      - ./config/nodes/member:/opt/besu/keys
+      - ./logs/besu:/tmp/besu
+    depends_on:
+      - member1tessera
+    ports:
+      - 8545:8545
+      - 8546:8546
+      - 30303:30303
