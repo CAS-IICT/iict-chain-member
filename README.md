@@ -5,7 +5,7 @@
 ## 步骤
 
 1. 安装 docker 和 docker-compose
-2. 根据实际情况修改 .env 文件中的变量，域名以及开放端口等
+2. 复制.env_sample文件到.env，根据实际情况修改.env文件中的域名以及开放端口等环境变量
 3. 运行`./run.sh`
 
 ## Docker Images List
