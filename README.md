@@ -36,7 +36,7 @@ chmod -R 777 config/nodes/member
 
 3. 检查是否已经进入区块链网络？
 
-请访问服务器地址:9000/partyInfo
+请访问服务器地址:9000/partyinfo
 
 4. 无法显示步骤 3
 

@@ -131,6 +131,7 @@ services:
     volumes:
       - ./config/besu/:/config
       - ./config/nodes/member:/opt/besu/keys
+      - ./data:/opt/besu/data
       - ./logs/besu:/tmp/besu
     depends_on:
       - tessera
