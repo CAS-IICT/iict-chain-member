@@ -5,14 +5,8 @@
 ## 步骤
 
 1. 安装 docker 和 docker-compose
-2. 运行`./run.sh`
-3. 要求输入域名，必须是公网的服务器，域名前缀`http://`须加上
-
-## 创建自己的链
-
-1. 修改 DOMAIN 是必须的
-2. 修改 `config/besu` 下的各类配置文件，尤其是 `config` 文件和 `static-nodes`，修改为自己的网络节点
-3. 修改 `config/tessera/boot-member-config.json` 中的 `member` 主节点
+2. 根据实际情况修改 .env 文件中的变量，域名以及开放端口等
+3. 运行`./run.sh`
 
 ## Docker Images List
 

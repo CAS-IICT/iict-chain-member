@@ -8,7 +8,7 @@ x-besu-tx-def:
     - /bin/bash
     - -c
     - |
-
+      
       if [ ! -f "/opt/besu/keys/nodekey" ];then
         /opt/besu/bin/besu operator generate-blockchain-config \
         --config-file=/config/node-config.json \
@@ -27,26 +27,15 @@ x-besu-tx-def:
       --node-private-key-file=/opt/besu/keys/nodekey \
       --min-gas-price=0 \
       --privacy-enabled \
-      --privacy-url=http://member1tessera:9101 \
+      --privacy-url=http://tessera:${TESSERA_Q2T_PORT} \
       --privacy-public-key-file=/opt/besu/keys/tm.pub \
-      --privacy-onchain-groups-enabled=${PRIVACY_ONCHAIN_GROUPS_ENABLED:-false} \
       --rpc-http-api=ADMIN,DEBUG,EEA,WEB3,ETH,NET,PRIV,PERM,${BESU_CONS_ALGO:-QBFT} \
       --rpc-ws-api=ADMIN,DEBUG,EEA,WEB3,ETH,NET,PRIV,PERM,${BESU_CONS_ALGO:-QBFT} ;
 
 x-tessera-def:
   &tessera-def
   image: quorumengineering/tessera:${TESSERA_VERSION:-latest}
-  expose:
-    - 9000
-    - 9080
-    - 9101
-  restart: "no"
-  healthcheck:
-    test: ["CMD", "wget", "--spider", "--proxy", "off", "http://localhost:9000/upcheck"]
-    interval: 3s
-    timeout: 3s
-    retries: 20
-    start_period: 5s
+  restart: "on-failure"
   entrypoint:
     - /bin/sh
     - -c
@@ -73,13 +62,13 @@ x-tessera-def:
             {
               "app":"ThirdParty",
               "enabled": true,
-              "serverAddress": "$$(echo $DOMAIN):9080",
+              "serverAddress": "$$(echo $DOMAIN):$$(echo $TESSERA_THIRD_PORT)",
               "communicationType" : "REST"
             },
             {
               "app":"Q2T",
               "enabled": true,
-              "serverAddress": "$$(echo $DOMAIN):9101",
+              "serverAddress": "$$(echo $DOMAIN):$$(echo $TESSERA_Q2T_PORT)",
               "sslConfig": {
                 "tls": "OFF"
               },
@@ -88,7 +77,7 @@ x-tessera-def:
             {
               "app":"P2P",
               "enabled": true,
-              "serverAddress": "$$(echo $DOMAIN):9000",
+              "serverAddress": "$$(echo $DOMAIN):$$(echo $TESSERA_P2P_PORT)",
               "sslConfig": {
                 "tls": "OFF"
               },
@@ -112,9 +101,15 @@ x-tessera-def:
           /tessera/bin/tessera -configfile /config/tessera/tessera-config-09.json &> /var/log/tessera/tessera-$$HOSTNAME.log | tee -a /var/log/tessera/tessera-$$HOSTNAME.log
 
 services:
-
-  member1tessera:
-    << : *tessera-def
+  tessera:
+    <<: *tessera-def
+    container_name: tessera
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "--proxy", "off", "http://localhost:${TESSERA_P2P_PORT}/upcheck"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
     environment:
       - TESSERA_CONFIG_TYPE="-09"
       - JAVA_OPTS="-Dlogback.configurationFile=/config/logs/logback.xml"
@@ -123,21 +118,22 @@ services:
       - ./config/nodes/member:/config/keys
       - ./logs/tessera:/var/log/tessera/
     ports:
-      - 9080:9080
-      - 9000:9000
-      - 9101:9101
+      - ${TESSERA_THIRD_PORT}:${TESSERA_THIRD_PORT}
+      - ${TESSERA_Q2T_PORT}:${TESSERA_Q2T_PORT}
+      - ${TESSERA_P2P_PORT}:${TESSERA_P2P_PORT}
 
-  member1besu:
-    << : *besu-tx-def
+  besu:
+    <<: *besu-tx-def
+    container_name: besu
     environment:
-      - OTEL_RESOURCE_ATTRIBUTES=service.name=member1besu,service.version=${BESU_VERSION:-latest}
-      - NODE_ID=6
+      - LOG4J_CONFIGURATION_FILE=/config/log-config.xml
+      - NODE_NAME=member
     volumes:
       - ./config/besu/:/config
       - ./config/nodes/member:/opt/besu/keys
       - ./logs/besu:/tmp/besu
     depends_on:
-      - member1tessera
+      - tessera
     ports:
       - 8545:8545
       - 8546:8546
