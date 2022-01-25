@@ -29,8 +29,8 @@ x-besu-tx-def:
       --privacy-enabled \
       --privacy-url=http://tessera:${TESSERA_Q2T_PORT} \
       --privacy-public-key-file=/opt/besu/keys/tm.pub \
-      --rpc-http-api=ADMIN,DEBUG,EEA,WEB3,ETH,NET,PRIV,PERM,${BESU_CONS_ALGO:-QBFT} \
-      --rpc-ws-api=ADMIN,DEBUG,EEA,WEB3,ETH,NET,PRIV,PERM,${BESU_CONS_ALGO:-QBFT} ;
+      --rpc-http-api=ADMIN,DEBUG,EEA,WEB3,ETH,NET,PRIV,PERM,TXPOOL,TRACE,IBFT \
+      --rpc-ws-api=ADMIN,DEBUG,EEA,WEB3,ETH,NET,PRIV,PERM,TXPOOL,TRACEI,IBFT ;
 
 x-tessera-def:
   &tessera-def
@@ -105,7 +105,15 @@ services:
     <<: *tessera-def
     container_name: tessera
     healthcheck:
-      test: ["CMD", "wget", "--spider", "--proxy", "off", "http://localhost:${TESSERA_P2P_PORT}/upcheck"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--spider",
+          "--proxy",
+          "off",
+          "http://localhost:${TESSERA_P2P_PORT}/upcheck"
+        ]
       interval: 3s
       timeout: 3s
       retries: 20
