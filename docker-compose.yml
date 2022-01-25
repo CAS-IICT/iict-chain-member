@@ -30,7 +30,7 @@ x-besu-tx-def:
       --privacy-url=http://tessera:${TESSERA_Q2T_PORT} \
       --privacy-public-key-file=/opt/besu/keys/tm.pub \
       --rpc-http-api=ADMIN,DEBUG,EEA,WEB3,ETH,NET,PRIV,PERM,TXPOOL,TRACE,IBFT \
-      --rpc-ws-api=ADMIN,DEBUG,EEA,WEB3,ETH,NET,PRIV,PERM,TXPOOL,TRACEI,IBFT ;
+      --rpc-ws-api=ADMIN,DEBUG,EEA,WEB3,ETH,NET,PRIV,PERM,TXPOOL,TRACE,IBFT ;
 
 x-tessera-def:
   &tessera-def
