@@ -1,8 +1,7 @@
 /logs
-/data/*
+/data
 .env
 .DS_Store
-!data/.gitkeep
 config/nodes/member/*
 !config/nodes/member/.gitkeep
 config/tessera/tessera-config-09.json

@@ -13,5 +13,4 @@ if [ ! -d data ]; then
     chmod -R 0777 data
 fi
 
-#echo "Starting Member Peer......"
 docker-compose up -d
